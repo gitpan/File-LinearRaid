@@ -2,14 +2,10 @@
 
 use strict;
 use warnings;
-
 use Test::More 'no_plan';
-use lib '.';
 use File::Temp ':POSIX';
 
-
 use_ok("File::LinearRaid");
-
 
 my %data = (
     "empty-0"   => "",
@@ -17,8 +13,8 @@ my %data = (
     "lines1-15" => "123456789_12345",
     "lines2-15" => "6789_123456789_",
     "a-15"      => "a" x 15,
-    
 );
+
 my %tmp_files;
 
 END {
@@ -30,7 +26,6 @@ for (keys %data) {
     open my $fh, ">", $tmp_files{$_} or die $!;
     print $fh $data{$_};
 }
-
 
 ##################
 

@@ -6,7 +6,7 @@ use Symbol;
 use Carp;
 use vars '$VERSION';
 
-$VERSION = '0.11_1';
+$VERSION = '0.11';
 
 sub new {
     my $pkg = shift;
@@ -27,7 +27,8 @@ sub TIEHANDLE {
     my $length = 0;
     
     while (my ($file, $size) = splice @_, 0, 2) {
-        open my $fh, $mode, $file or croak "Couldn't open $file: $!\n";
+        open my $fh, $mode, $file
+            or croak "File::LinearRaid: couldn't open $file: $!\n";
         
         push @handles, $fh;
         push @files, $file;
@@ -69,12 +70,15 @@ sub READ {
         ? $self->{sizes}[$f] - $pos
         : $length;
     
-    seek $self->{handles}[$f], $pos, 0
-        or croak "Couldn't seek $self->{files}[$f]";
+    if (tell $self->{handles}[$f] != $pos) {
+        seek $self->{handles}[$f], $pos, 0
+            or croak "File::LinearRaid: couldn't seek $self->{files}[$f]: $!";
+    }
     
     $b = read $self->{handles}[$f], $_[1], $this_read, $offset;
 
-    defined $b or croak "Error reading from $self->{files}[$f]: $!";
+    defined $b
+        or croak "File::LinearRaid: error reading from $self->{files}[$f]: $!";
 
     $self->{pos} += $this_read;
     
@@ -147,8 +151,10 @@ sub WRITE {
         ? $self->{sizes}[$f] - $pos
         : $length;
     
-    seek $self->{handles}[$f], $pos, 0
-        or croak "Couldn't seek $self->{files}[$f]";
+    if (tell $self->{handles}[$f] != $pos) {
+        seek $self->{handles}[$f], $pos, 0
+            or croak "File::LinearRaid: couldn't seek $self->{files}[$f]: $!";
+    }
     
     print { $self->{handles}[$f] } substr($_[1], $offset, $this_write)
         or return 0;
@@ -205,7 +211,7 @@ sub CLOSE {
 }
 
 sub OPEN {
-    croak "OPEN Unimplemented";
+    croak "File::LinearRaid::OPEN Unimplemented";
 }
 1;
 
@@ -262,38 +268,55 @@ physical files:
   seek $fh, ($chunk_id * $chunk_size), 0;
   print $fh $chunk;
 
-At this time the module is still beta quality, but most common file activities
-should work fine.
+This module may prove useful if your physical file system has a low (2G) limit
+on file sizes, yet you require access and storage for a large amount of data
+through a single filehandle.
 
 =head1 USAGE
 
   File::LinearRaid->new( $mode, $path1 => $size1, ... )
 
-Returns a new File::LinearRaid object consisting of the listed paths. Each
-physical file is opened using the given mode.
+Returns a new aggregate filehandle consisting of the listed paths in that
+order. Each physical file is opened using the given mode. (Note: if C<$mode> is
+C<< > >> or C<< +> >>, all files will be truncated before opening -- see 
+L<open>)
 
-Each file needs an associated maximum length. This need not be the current
-length of the file. If the file is shorter than this length, the LinearRaid
-filehandle will behave as if the file were null-padded to this length
-(although it will not modify the file for reading). If the file is longer than
-this length, the portion of thie file past this length will be ignored (but
-preserved). When writing to the LinearRaid filehandle for random access, the
-physical files will be grown (with null characters) as needed.
+For each file, you must specify a maximum length. This need not be the current
+length of the file:
 
-Currently, read, readline, print, getc and friends are implemented, so you
-should be able to use most file operations seamlessly. Writing beyond the
-specified limit of the final physical file is not supported.
+=over
+
+=item 
+
+If a physical file is shorter than its specified length, the aggregate
+filehandle will behave as if the file were null-padded to that length. If no
+writes are made to the physical file, it will not be modified. If writes are
+made between the end of the physical file and its specified length, the space
+between the end of the physical file and the new data is filled out with nulls.
+The physical file is grown only as far as needed, so it may still be shorter
+than its specified length.
+
+=item
+
+If a physical file is longer than its specified length, the portion of the
+physical file past that length will be ignored. The data past the specified
+length will be preserved, as long as opening the file with C<$mode> doesn't
+truncate it first.
+
+=back
+
+Currently, C<read>, C<readline>, C<print>, C<getc> and friends are implemented,
+so you should be able to use most file operations seamlessly. Writing to the
+aggregate filehandle past the total length is not supported. In other words,
+the final physical file will not be grown as needed.
 
 =head1 CAVEATS
-
-This module is currently not much more than proof-of-concept. Although there
-is a test suite, things might not be perfect yet.
 
 =over
 
 =item *
 
-Probably doesn't play well with unicode / wide characters.
+May not play well with Unicode / wide characters.
 
 =item *
 
@@ -302,6 +325,14 @@ Error checking is quite limited.
 =item *
 
 Formats are untested, I don't use them and don't know if they'll work.
+
+=item *
+
+Not rigorously tested with huge files. I don't have that much disk space!
+As long as the individual file limits are less than your OS size limit, and
+the size of the aggregate filehandle can be stored in an integer, everything
+should be fine. You might even be able to C<seek> to a BigInt value on the
+aggregate filehandle, but this is not guaranteed to work.
 
 =back
 
