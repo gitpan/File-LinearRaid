@@ -35,6 +35,10 @@ my $fh = File::LinearRaid->new( "<",
     $tmp_files{"num-15"} => 5
 );
 
+is( $fh->size,
+    35,
+    "size accessor" );
+
 isa_ok(
     $fh,
     "File::LinearRaid",
@@ -141,6 +145,29 @@ is( tell($fh),
     "readline with \$/ = undef" );
 ok( eof($fh),
     "readline to end of file" );
+
+
+
+ok( $fh->append( $tmp_files{"a-15"} => 15 ),
+    "append accessor" );
+
+is( $fh->size,
+    45,
+    "size accessor after append" );
+
+ok( seek($fh, 35, 0),
+    "seek after append" );
+is( tell($fh),
+    35,
+    "tell after append" );
+
+$b = read $fh, $buf, 10;
+is( $b,
+    10,
+    "read after append" );
+is( $buf,
+    "a" x 10,
+    "read correct data after append" );
 
 ###################################
 

@@ -6,7 +6,7 @@ use Symbol;
 use Carp;
 use vars '$VERSION';
 
-$VERSION = '0.11';
+$VERSION = '0.12';
 
 sub new {
     my $pkg = shift;
@@ -15,6 +15,27 @@ sub new {
     tie *$sym, $pkg, @_;
 
     return bless $sym, $pkg;
+}
+
+sub size {
+    tied( *{+shift} )->{length};
+}
+
+sub append {
+    my $self = tied( *{+shift} );
+    
+    while (my ($file, $size) = splice @_, 0, 2) {
+        open my $fh, $self->{mode}, $file
+            or croak "File::LinearRaid: couldn't open $file: $!\n";
+
+        push @{ $self->{handles} }, $fh;
+        push @{ $self->{files} }, $file;
+        push @{ $self->{sizes} }, $size;
+        
+        $self->{length} += $size;
+    }
+
+    return 1;
 }
 
 sub TIEHANDLE {
@@ -37,12 +58,12 @@ sub TIEHANDLE {
     }
     
     bless {
-        pos     => 0,
-        files   => \@files,
-        sizes   => \@sizes,
-        handles => \@handles,
-        length  => $length,
-        last_file => $#files
+        pos       => 0,
+        files     => \@files,
+        sizes     => \@sizes,
+        handles   => \@handles,
+        length    => $length,
+	mode      => $mode
     }, $pkg;
 }
 
@@ -274,12 +295,14 @@ through a single filehandle.
 
 =head1 USAGE
 
-  File::LinearRaid->new( $mode, $path1 => $size1, ... )
+=head2 new
+
+    my $fh = File::LinearRaid->new( $mode, $path1 => $size1, ... )
 
 Returns a new aggregate filehandle consisting of the listed paths in that
-order. Each physical file is opened using the given mode. (Note: if C<$mode> is
+order. Each physical file is opened using the given mode (Note: if C<$mode> is
 C<< > >> or C<< +> >>, all files will be truncated before opening -- see 
-L<open>)
+L<open>). If there is an error opening a file, croaks.
 
 For each file, you must specify a maximum length. This need not be the current
 length of the file:
@@ -305,10 +328,27 @@ truncate it first.
 
 =back
 
-Currently, C<read>, C<readline>, C<print>, C<getc> and friends are implemented,
+=head2 append
+
+  $fh->append( $path1 => $size1, ... )
+
+Append new file(s) to the end of the aggregate filehandle, with the given
+size(s). Returns a true value if successful, otherwise croaks.
+
+=head2 size
+
+  $fh->size
+
+Returns the current maximum size of the aggregate filehandle.
+
+=head2 Filehandle operations
+
+Currently, C<read>, C<readline>, C<print>, C<getc>, and C<open> are implemented,
 so you should be able to use most file operations seamlessly. Writing to the
 aggregate filehandle past the total length is not supported. In other words,
-the final physical file will not be grown as needed.
+the final physical file will not be grown as needed. You must use C<append>.
+
+
 
 =head1 CAVEATS
 
