@@ -6,7 +6,7 @@ use Symbol;
 use Carp;
 use vars '$VERSION';
 
-$VERSION = '0.10';
+$VERSION = '0.11_1';
 
 sub new {
     my $pkg = shift;
@@ -245,7 +245,8 @@ series of files. For example, in the BitTorrent filesharing protocol, several
 files are shared as a single entity. The final sizes of the individual files
 are known, but the protocol only sends fixed-width chunks of data. These
 chunks are not aligned to file boundaries and can span several physical files,
-but they are only identified by their number and not by the files they span.
+but they are only identified by their overall offset and not by the files they
+span.
 
 This module was created to provide a layer of abstraction around this kind of
 storage. Instead of calculating possibly many file offsets, and dividing

@@ -1,4 +1,8 @@
 Revision history for Perl extension File::LinearRaid:
 
+0.11_1  Wed May 05 2004
+	- Fixed a newline-related bug in test.pl that caused it to fail in
+	  Windows (at least I hope it's fixed).
+
 0.10	Sat Feb 14 2004
 	- Initial release.

@@ -14,8 +14,8 @@ use_ok("File::LinearRaid");
 my %data = (
     "empty-0"   => "",
     "num-15"    => "123456789012345",
-    "lines1-15" => "123456789\n12345",
-    "lines2-15" => "6789\n123456789\n",
+    "lines1-15" => "123456789_12345",
+    "lines2-15" => "6789_123456789_",
     "a-15"      => "a" x 15,
     
 );
@@ -115,13 +115,14 @@ my $lines = 0;
 $pos = 0;
 
 for (0..2) {
+    local $/ = "_";
     $buf = <$fh>;
 
     is( length $buf,
         10,
         "readline until \$/" );
     is( $buf,
-        "123456789\n",
+        "123456789_",
         "readline correct data" );
     is( tell($fh),
         ($pos += 10),
